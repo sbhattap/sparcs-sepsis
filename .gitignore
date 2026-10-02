@@ -1,0 +1,33 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+# Data: public but large; recreated by the download cell
+data/
+*.parquet
+*.csv
+!figs/*.csv
+
+# Secrets / local environment
+.env
+.env.*
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store

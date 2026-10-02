@@ -1,0 +1,32 @@
+[project]
+name = "sparcs"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Subarna Bhattacharya", email = "sunitab55@gmail.com" }
+]
+requires-python = ">=3.14"
+dependencies = [
+    "lightgbm>=4.7.0",
+    "matplotlib>=3.11.2",
+    "numpy>=2.5.3",
+    "pandas>=3.0.6",
+    "pyarrow>=25.0.1",
+    "scikit-learn>=1.9.1",
+    "scipy>=1.18.1",
+]
+
+[project.scripts]
+sparcs = "sparcs:main"
+
+[build-system]
+requires = ["uv_build>=0.12.17,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=7.4.0",
+    "jupyterlab>=4.6.4",
+    "jupytext>=1.19.5",
+]
