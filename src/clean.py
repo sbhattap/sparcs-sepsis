@@ -45,6 +45,15 @@ CONSTANT_COLS = [
 
 HOSPICE = ["Hospice - Home", "Hospice - Medical Facility"]
 
+# Discharged to another hospital that gives acute or ongoing hospital care.
+# Post-acute settings (rehab, nursing homes, psych, swing beds) are not included.
+TRANSFERS = [
+    "Short-term Hospital", "Cancer Center or Children's Hospital",
+    "Critical Access Hospital", "Medicare Cert Long Term Care Hospital",
+    "Federal Health Care Facility",
+]
+LEFT_AMA = "Left Against Medical Advice"
+
 
 def to_number(s: pd.Series) -> pd.Series:
     """Text like '76,210.47' -> 76210.47. Raises on anything unexpected."""
@@ -84,9 +93,13 @@ def build_cohort(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     df = df[df["age_group"] != "0 to 17"]
     steps.append(("adults", len(df)))
 
-    # Transfers out to another acute hospital: their final outcome is unknown here,
+    # Transfers out to another hospital: their final outcome is unknown here,
     # and counting them as survivors would reward hospitals that transfer sick patients.
-    df = df[df["patient_disposition"] != "Short-term Hospital"]
-    steps.append(("not transferred to another acute hospital", len(df)))
+    df = df[~df["patient_disposition"].isin(TRANSFERS)]
+    steps.append(("not transferred to another hospital", len(df)))
+
+    # Left against medical advice: care was cut short, so the outcome is unknown too.
+    df = df[df["patient_disposition"] != LEFT_AMA]
+    steps.append(("did not leave against medical advice", len(df)))
 
     return df.copy(), pd.DataFrame(steps, columns=["step", "n"])
