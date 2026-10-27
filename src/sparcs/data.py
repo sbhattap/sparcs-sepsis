@@ -1,4 +1,4 @@
-"""Clean SPARCS discharges and build the adult sepsis cohort.
+"""Step 1: load SPARCS discharges, clean them, and build the adult sepsis cohort.
 
 Column names are the Socrata API names (see DATA_DICTIONARY.md). Everything
 arrives as text, so numeric fields are converted here.
@@ -27,6 +27,22 @@ arrives as text, so numeric fields are converted here.
 # apr_drg_code, apr_drg_description, apr_mdc_code, apr_mdc_description, apr_medical_surgical,
 
 import pandas as pd
+
+from .config import APR_DRG, DATASET_ID, RAW_PATH
+
+
+def load_raw() -> pd.DataFrame:
+    """Download the DRG's discharges once, then read the local Parquet copy."""
+    if not RAW_PATH.exists():
+        # ~131k sepsis discharges in 2023; one request, takes a minute or two.
+        url = (
+            f"https://health.data.ny.gov/resource/{DATASET_ID}.csv"
+            f"?apr_drg_code={APR_DRG}&$limit=500000"
+        )
+        RAW_PATH.parent.mkdir(exist_ok=True)
+        # Read everything as text; clean() converts the numeric columns
+        pd.read_csv(url, dtype=str).to_parquet(RAW_PATH, index=False)
+    return pd.read_parquet(RAW_PATH)
 
 # Columns the analysis relies on; fail early if the API renames any of them.
 REQUIRED_COLS = [
