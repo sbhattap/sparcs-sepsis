@@ -13,7 +13,6 @@ wheels/
 data/
 *.parquet
 *.csv
-!figs/*.csv
 
 # Secrets / local environment
 .env
@@ -31,3 +30,7 @@ data/
 .vscode/
 .idea/
 .DS_Store
+
+# Generated outputs: rebuilt by `uv run sparcs`; final figures get committed at the end
+figs/
+results/

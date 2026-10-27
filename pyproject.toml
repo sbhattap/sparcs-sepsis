@@ -1,7 +1,7 @@
 [project]
 name = "sparcs"
 version = "0.1.0"
-description = "Add your description here"
+description = "Risk-adjusted sepsis mortality benchmarking for New York hospitals (SPARCS 2023)"
 readme = "README.md"
 authors = [
     { name = "Subarna Bhattacharya", email = "sunitab55@gmail.com" }
