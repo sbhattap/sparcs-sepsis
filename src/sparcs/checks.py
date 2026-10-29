@@ -10,6 +10,8 @@ A flag that holds under all four combinations is a robust signal.
 
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+import statsmodels.formula.api as smf
 
 from . import models
 from .benchmark import hospital_oe, oe_ci
@@ -89,4 +91,32 @@ def calibration_by_race(df: pd.DataFrame, p) -> pd.DataFrame:
            .agg(n=("died", "size"), observed=("died", "sum"), expected=("p", "sum")))
     t["oe"] = t["observed"] / t["expected"]
     t["oe_ci_low"], t["oe_ci_high"] = oe_ci(t["observed"], t["expected"])
+
+    # Within-hospital O/E: expected deaths if each patient had their own hospital's
+    # O/E. If this is ~1 while the overall O/E isn't, the gap comes from which
+    # hospitals a group is treated at, not from the model misjudging that group.
+    hosp_oe = hospital_oe(df, p).set_index("permanent_facility_id")["oe"]
+    e_within = df.assign(e=p * df["permanent_facility_id"].map(hosp_oe).to_numpy()).groupby("race")["e"].sum()
+    t["oe_within_hospital"] = t["observed"] / e_within
     return t.round(3)
+
+
+def race_odds_ratios(df: pd.DataFrame, p, reference: str = "White") -> pd.DataFrame:
+    """Odds of death by race relative to `reference`, beyond the model's predicted
+    risk (logit p as an offset), with and without hospital fixed effects. An odds
+    ratio that shrinks to ~1 once hospital is added means the group's extra deaths
+    are explained by where it's treated."""
+    d = df.assign(logit_p=np.log(p / (1 - p)))
+    race = f"C(race, Treatment({reference!r}))"
+    out = {}
+    for label, formula in [("ignoring hospital", f"died ~ {race}"),
+                           ("within hospital", f"died ~ {race} + C(permanent_facility_id)")]:
+        fit = smf.glm(formula, data=d, family=sm.families.Binomial(), offset=d["logit_p"]).fit()
+        terms = [t for t in fit.params.index if t.startswith("C(race")]
+        ci = fit.conf_int().loc[terms]
+        table = pd.DataFrame({"odds_ratio": np.exp(fit.params[terms]),
+                              "ci_low": np.exp(ci[0]), "ci_high": np.exp(ci[1])})
+        # "C(race, Treatment('White'))[T.Multi-racial]" -> "Multi-racial"
+        table.index = [t.split("[T.")[1].rstrip("]") for t in terms]
+        out[label] = table
+    return pd.concat(out, axis=1).round(3)

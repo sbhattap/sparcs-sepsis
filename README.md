@@ -4,15 +4,43 @@ Which New York hospitals have more in-hospital sepsis deaths than expected, give
 
 Using 120,995 adult sepsis discharges from 180 hospitals, I built a patient-level risk model, compared each hospital's observed deaths with its expected deaths (O/E), and tested how robust the hospital flags are to the choice of outcome, risk factors, and statistical limits.
 
-## Key findings
+## Answer
+
+**Seven hospitals have consistently more in-hospital sepsis deaths than expected for their patients, and two have consistently fewer.** Each of these is flagged in the same direction under all four method variants: both outcomes (in-hospital death; death or discharge to hospice) and both risk-factor sets (full model; admission factors only), using funnel limits that allow for normal variation between hospitals.
+
+| Hospital | Sepsis cases | Observed deaths | Expected deaths | O/E (95% CI) | Holds at 99.8%? |
+|---|---|---|---|---|---|
+| **More deaths than expected** | | | | | |
+| St Johns Episcopal Hospital South Shore | 852 | 207 | 102 | 2.02 (1.75 to 2.32) | Yes |
+| Brookdale Hospital Medical Center | 431 | 117 | 61 | 1.93 (1.60 to 2.32) | Yes |
+| Brooklyn Hospital Center, Downtown Campus | 565 | 116 | 59 | 1.96 (1.62 to 2.35) | No |
+| Westchester Medical Center | 537 | 115 | 67 | 1.70 (1.41 to 2.05) | No |
+| Kenmore Mercy Hospital | 347 | 90 | 55 | 1.64 (1.32 to 2.01) | No |
+| NYC Health + Hospitals/South Brooklyn Health | 1,064 | 232 | 144 | 1.61 (1.41 to 1.83) | No |
+| Good Samaritan Hospital Medical Center | 1,081 | 208 | 135 | 1.54 (1.34 to 1.77) | No |
+| **Fewer deaths than expected** | | | | | |
+| NYU Langone Hospital-Long Island | 2,267 | 111 | 274 | 0.40 (0.33 to 0.49) | No |
+| A.O. Fox Memorial Hospital | 208 | 6 | 19 | 0.31 (0.11 to 0.68) | No |
+
+O/E and CIs are from the main model (in-hospital death, full risk factors). "Holds at 99.8%" means the flag survives all four variants at the stricter limit.
+
+**Do the conclusions hold up? The ranking does; most of the flags don't.** Hospitals keep a similar order across method variants (Spearman rank correlation of O/E: 0.89 when hospice counts as death, 0.80 with admission factors only, 0.99 or more across the other risk-factor sets). But how many hospitals stand out from the rest depends heavily on method:
+
+| Method | Hospitals flagged (of 180) |
+|---|---|
+| Poisson funnel limits, 99.8% (the textbook approach) | 46 |
+| Limits adjusted for overdispersion, 95% | 29 |
+| Adjusted 95%, and flagged under all four variants | **9** (table above) |
+| Adjusted 99.8%, and flagged under all four variants | **2** |
+
+These are statistical signals worth a closer look, not verdicts on quality of care. The data are administrative billing records; see [What this measures](#what-this-measures-and-what-it-doesnt).
+
+## Supporting findings
 
 1. **Raw death rates mostly reflect case mix.** Across hospitals with 300+ sepsis cases, raw mortality correlates 0.53 with the share of patients coded at Extreme risk of mortality. Ranking hospitals on raw rates would largely rank who they treat.
-2. **A simple, well-calibrated model is enough.** Logistic regression on six patient factors reaches AUROC 0.81 with calibration slope 0.99 and intercept -0.003. LightGBM, EBM, and logistic regression with interactions are within 0.001 AUROC (bootstrap by hospital); the extra flexibility buys nothing here.
-3. **Hospitals vary far more than chance allows.** The overdispersion factor is 4.9. With standard Poisson limits, 46 of 180 hospitals sit outside the 99.8% funnel limits; after allowing for the usual variation between hospitals, 5 do.
-4. **Few flags are robust.** Requiring a flag to hold under both outcomes (in-hospital death; death or hospice discharge) and both risk-factor extremes (full model; admission factors only) leaves 7 high and 2 low hospitals at the adjusted 95% level, and 2 high at 99.8%: St Johns Episcopal Hospital South Shore (O/E 2.02, 95% CI 1.75 to 2.32) and Brookdale Hospital Medical Center (O/E 1.93, 1.60 to 2.32).
-5. **The model under-predicts deaths for Black patients** (O/E 1.12, 95% CI 1.08 to 1.17) and slightly over-predicts for White patients (0.97, 0.95 to 0.99). Race is not a model input; this is a calibration gap worth understanding before using the expected deaths for any decision.
-
-These are statistical signals worth a closer look, not verdicts on quality of care. The data are administrative billing records.
+2. **A simple, well-calibrated model is enough.** Logistic regression on six patient factors reaches AUROC 0.81 with calibration slope 0.99 and intercept -0.003. LightGBM, EBM, and logistic regression with interactions are within 0.001 AUROC (bootstrap by hospital).
+3. **Hospitals vary far more than chance allows.** The overdispersion factor is 4.9, so Poisson limits flag far too many hospitals. Allowing for the usual variation between hospitals cuts the 99.8% flags from 46 to 5.
+4. **Black patients die more often than predicted, because of where they are treated.** Overall O/E is 1.12 (95% CI 1.08 to 1.17) for Black patients and 0.97 for White patients. Within the same hospital the gap disappears (O/E 1.02; odds ratio vs White patients 1.02, 0.96 to 1.09, down from 1.22 when hospital is ignored). So the model is not miscalibrated by race; Black patients are more often treated at hospitals with higher-than-expected mortality (5.5% at the 7 robust-high hospitals vs 2.9% of White patients). Race is not a model input.
 
 ## Data
 

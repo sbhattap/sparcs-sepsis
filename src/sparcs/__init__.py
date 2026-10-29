@@ -60,6 +60,9 @@ def main() -> None:
     fair = checks.calibration_by_race(df, preds["lr_full"])
     fair.to_csv(RESULTS / "fairness_by_race.csv")
     print(fair.to_string())
+    race_or = checks.race_odds_ratios(df, preds["lr_full"])
+    race_or.to_csv(RESULTS / "race_odds_ratios.csv")
+    print(race_or.to_string())
 
     plt.close("all")
     print(f"\nFigures in {FIGS}/, tables in {RESULTS}/")
