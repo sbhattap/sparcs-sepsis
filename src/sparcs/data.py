@@ -70,6 +70,12 @@ TRANSFERS = [
 ]
 LEFT_AMA = "Left Against Medical Advice"
 
+# Hospital-level rules. SPARCS and the NY facility registry both list every
+# hospital as just "Hospital", so out-of-scope and implausible ones are found
+# from their own sepsis discharges.
+MAX_ELECTIVE_SHARE = 0.9   # above this, a hospital isn't treating acute sepsis
+MIN_CASES_ZERO_DEATHS = 100  # 0 deaths in this many cases is implausible at ~12% mortality
+
 
 def to_number(s: pd.Series) -> pd.Series:
     """Text like '76,210.47' -> 76210.47. Raises on anything unexpected."""
@@ -117,5 +123,22 @@ def build_cohort(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     # Left against medical advice: care was cut short, so the outcome is unknown too.
     df = df[df["patient_disposition"] != LEFT_AMA]
     steps.append(("did not leave against medical advice", len(df)))
+
+    by_hospital = df.groupby("permanent_facility_id")
+
+    # Acute-care hospitals only. Sepsis is an emergency (under 1% of admissions are
+    # planned), so a hospital whose sepsis admissions are almost all elective is
+    # admitting for something else, such as palliative or rehab care.
+    elective_share = by_hospital["type_of_admission"].transform(lambda s: s.eq("Elective").mean())
+    df = df[elective_share <= MAX_ELECTIVE_SHARE]
+    steps.append(("hospital treats acute sepsis (not mostly elective)", len(df)))
+
+    # Plausible reporting: no deaths at all among 100+ sepsis discharges points to a
+    # disposition reporting problem, not perfect care.
+    by_hospital = df.groupby("permanent_facility_id")
+    implausible = (by_hospital["died"].transform("size") >= MIN_CASES_ZERO_DEATHS) & \
+                  (by_hospital["died"].transform("sum") == 0)
+    df = df[~implausible]
+    steps.append(("hospital reports deaths plausibly", len(df)))
 
     return df.copy(), pd.DataFrame(steps, columns=["step", "n"])
